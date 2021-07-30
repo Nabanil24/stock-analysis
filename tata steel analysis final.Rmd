@@ -35,8 +35,7 @@ To find the correlation between these two, we use PACF plot.
 pacf(tatasteel_price, plot = T)
 ```
 
-we find significant correlation at lag 1 and then it falls below the 95% confidence line indicating an auto regressive term with lag 1 but a correlation of 1 can also signify a random walk, hence we check
-the first difference of the data
+we find significant correlation at lag 1 and then it falls below the 95% confidence line indicating an auto regressive term with lag 1 but a correlation of 1 can also signify a random walk, hence we check the first difference of the data
 
 ```{r}
 diff_return <- as.matrix(diff(tatasteel_price))
@@ -182,7 +181,20 @@ plot(ts(return_analysis[,3]))
 abline(h=0.0006,lwd=2,col='red')
 title("VARIANCE_MOVEMENT")
 ```
+Here we can see that the variance and mean jump up first but then come back to a low value hence as they are not growing exponentially we can say that our log returns are stationary. However, there's a need of robust testing to verify this.
+Here, augmented Dickey-Fuller Test would be useful to determine if the series is stationary or not.
+It has two hypothesis:
+$H_{o}$: The time series is unit root time series (non stationary series)
+$H_{1}$: The series is stationary
 
+Greater p-value implies towards $H_{o}$ hypothesis
+
+```{r}
+library(tseries)
+adf.test(log(tatasteel_price))
+adf.test(log_return_tatasteel)
+```
+Hence we can see that observations about both series is correct
 
 Unload all packages
 ```{r}
