@@ -1,0 +1,194 @@
+---
+title: "Bitcoin analysis"
+output: html_document
+---
+
+```{r}
+pacman::p_load(pacman,dplyr,GGally, ggplot2, ggthemes, ggvis, httr, lubridate, plotly, rio, rmarkdown, shiny, stringr, tidyr, fitdistrplus)
+
+library(datasets)
+library(tidyquant)
+```
+
+
+```{r}
+getSymbols("TATASTEEL.BO", from = "2015-01-01", to= "2020-12-31",auto.assign = TRUE,warnings = FALSE)
+
+tatasteel_price <- (TATASTEEL.BO$TATASTEEL.BO.Adjusted)
+
+tatasteel_price <- as.numeric(na.omit(tatasteel_price))
+plot(ts(tatasteel_price))
+```
+
+we check for correlation between the stock values
+for that we use auto correlation function
+
+```{r}
+acf(tatasteel_price, plot = T)
+```
+
+we see that there is a significant correlation even beyond 30 lag. But we don't find the "true" 
+correlation between a current time spot and the time spot just before it as they are influenced by earlier time spots. 
+To find the correlation between these two, we use PACF plot.
+
+```{r}
+pacf(tatasteel_price, plot = T)
+```
+
+we find significant correlation at lag 1 and then it falls below the 95% confidence line indicating an auto regressive term with lag 1 but a correlation of 1 can also signify a random walk, hence we check
+the first difference of the data
+
+```{r}
+diff_return <- as.matrix(diff(tatasteel_price))
+
+plot(ts(diff_return))
+
+acf(diff_return)
+
+pacf(diff_return)
+
+Box.test(diff_return, lag= 20, type = c("Ljung-Box"))
+```
+
+We see that there is a significant correlation at lag 7 for both acf and pacf
+Then we ran the Ljung box test to check if the correlations are not due to chance. as the p-value<0.05 we can reject the null hypothesis and assume that our data is in fact, correlated.
+
+
+
+RANDOM WALK THEORY : "THERE IS NO METHOD FOR PREDICTION OF STOCK PRICES AS THERE IS TOO MUCH OF RANDOM MOVEMENT,INVESTORS ARE BETTER OFF INVESTING IN STOCKS WHICH HAVE GENERAL TREND OF MARKET."
+
+To test this theory we generate a random walk with fixed amount of movement
+
+
+```{r}
+rnd_price <- matrix(NA, nrow = length(tatasteel_price), ncol = 1)
+
+rnd_price[1,] = 650
+
+for(i in 2: length(tatasteel_price)){
+  toss <- sample(c("H","T"),1,replace = TRUE,prob =c(0.5,0.5))
+  if(toss == "H") rnd_price[i,]= rnd_price[i-1,]+ 100
+  if(toss == "T") rnd_price[i,]= rnd_price[i-1,]-100
+}
+
+par(mfrow=c(2,1))
+par("mar")
+
+plot(ts(tatasteel_price))
+plot(ts(rnd_price))
+```
+
+
+Looking at the plots, we see that random walk is not able to show a significant trend of the original price so instead of using random steps for price movement, we can use return 
+
+
+Using log return:
+
+
+```{r}
+set.seed(101)
+log_return_tatasteel <- diff(log(tatasteel_price))
+log_return_tatasteel <- as.numeric(na.omit(log_return_tatasteel))
+logis <- fitdist(log_return_tatasteel,'logis',method = "mle")
+plot(ts(log_return_tatasteel))
+plot(density(log_return_tatasteel))
+acf(log_return_tatasteel)
+plot(logis)
+```
+Hence we see that logistic distribution is a good fit to our data.
+
+Geometric Random Walk:
+P[T]=P[0]exp(r(t)+...+r(1))
+```{r}
+random_log_return <- cumsum(rlogis(length(tatasteel_price),0.000438,0.013333)) # This will calculate the sum of data point
+log_price <- rep(NA,755)
+log_price[1] <- 260
+for(i in 2:length(tatasteel_price)){
+  log_price[i] <- log_price[1] * exp(random_log_return[i])
+}
+plot(ts(tatasteel_price))
+plot(ts(log_price),col = 'red')
+```
+
+We see that the log return is able to grasp a bit of the market trend. 
+Now we need to check if the distribution is going to stay the same as time goes on, we can do that if we can prove that our log return is a stationary time series.
+
+Stationary time series:
+mean and variance does not grow without bound
+covariance depends upon time
+
+```{r}
+MEAN_CORRELATION_VAR <- function(data,lag,sample_size){
+  if(length(data) %% sample_size == 0){
+    l <- length(data)/sample_size
+    mean_value <- rep(NA,l)
+    acf_value <- rep(NA,l)
+    var_value <- var(NA,l)
+    iteration <- 1
+    step_size <- 1
+    while(iteration <l){
+      sample_data <- data[step_size:(step_size+sample_size)] #data is broken into lengths of sample size
+      mean_value[iteration] <- mean(sample_data) # mean of sample
+      acf_mu <- acf(sample_data,lag.max = lag,plot = FALSE) #covariance of sample
+      acf_value[iteration] <- acf_mu$acf[lag+1]
+      var_value[iteration] <- var(sample_data) #VARIANCE OF SAMPLE
+      step_size <- step_size+4
+      iteration <- iteration+1
+    }
+      
+  }
+  else
+    print("Error")
+  
+ 
+  complie_list <- cbind(mean_value,acf_value,var_value)
+}
+#Function to check if time series is stationary or not
+```
+
+Conditions to be satisfied to apply geometric random walk:
+1.price should not be stationary
+2.return should be stationary
+3.correlation should be there among return data points
+
+```{r}
+set.seed(101)
+sample_price <- tatasteel_price[1:750] 
+tatasteel_stationary <- MEAN_CORRELATION_VAR(sample_price,5,25)
+tatasteel_stationary <- na.omit(tatasteel_stationary)
+plot(ts(tatasteel_stationary[,1]))
+title(main = "MEAN_MOVEMENT")
+plot(ts(tatasteel_stationary[,2]))
+abline(h=0,lwd=2,col='red')
+title(main = "CORRELATION_MOVEMENT")
+plot(ts(tatasteel_stationary[,3]))
+title(main = "VARIANCE_MOVEMENT")
+```
+As the variance and mean is non constant, we can say that the series is not stationary
+
+Now checking if log return is stationary:
+
+```{r}
+set.seed(101)
+mod_log_return <- log_return_tatasteel[1:750]
+return_analysis <- MEAN_CORRELATION_VAR(mod_log_return,5,25)
+plot(ts(return_analysis[,1]))
+abline(h=0,lwd=2,col='red')
+title(main = "MEAN_MOVEMENT")
+plot(ts(return_analysis[,2]))
+abline(h=-0.2,lwd=2,col='red')
+title(main = "CORRELATION_MOVEMENT")
+plot(ts(return_analysis[,3]))
+abline(h=0.0006,lwd=2,col='red')
+title("VARIANCE_MOVEMENT")
+```
+
+
+Unload all packages
+```{r}
+
+p_unload(all)
+
+detach("package:datasets",unload = TRUE)
+```
+
