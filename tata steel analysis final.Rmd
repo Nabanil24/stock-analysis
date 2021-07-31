@@ -2,6 +2,7 @@
 title: "Tata steel analysis"
 output: html_document
 ---
+In this project, I aim to implement some concepts of econophysics, later updates would include adding in Black-Scholes model and making a portfolio optimization model
 
 ```{r}
 pacman::p_load(pacman,dplyr,GGally, ggplot2, ggthemes, ggvis, httr, lubridate, plotly, rio, rmarkdown, shiny, stringr, tidyr, fitdistrplus)
@@ -12,6 +13,7 @@ library(tseries)
 library(zoo)
 ```
 
+We analyse the price of Tata Steel for the last 5 years and try to predict the future trend.
 
 ```{r}
 getSymbols("TATASTEEL.BO", from = "2015-01-01", to= "2020-12-31",auto.assign = TRUE,warnings = FALSE)
@@ -22,8 +24,8 @@ tatasteel_price <- as.numeric(na.omit(tatasteel_price))
 plot(ts(tatasteel_price))
 ```
 
-we check for correlation between the stock values
-for that we use auto correlation function
+First we check for correlation between the stock values in order to know if there is some kind of meaningful data that we can use for analysis.
+For that we use the auto correlation function
 
 ```{r}
 acf(tatasteel_price, plot = T)
@@ -31,7 +33,7 @@ acf(tatasteel_price, plot = T)
 
 we see that there is a significant correlation even beyond 30 lag. But we don't find the "true" 
 correlation between a current time spot and the time spot just before it as they are influenced by earlier time spots. 
-To find the correlation between these two, we use PACF plot.
+To find the correlation between these two, we use the PACF plot.
 
 ```{r}
 pacf(tatasteel_price, plot = T)
