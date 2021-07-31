@@ -200,7 +200,7 @@ Hence we can see that observations about both series is correct.
 We also need to rule out the possibility of our log return series being noise
 
 ```{r}
-Box.test(LOG_RETURN_NFLX,lag = 20,type = "Ljung")
+Box.test(log_return_tatasteel,lag = 20,type = "Ljung")
 ```
 We see that there is correlation between the data so we can apply geometric random motion for analysis
 
