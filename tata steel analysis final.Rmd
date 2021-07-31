@@ -8,6 +8,8 @@ pacman::p_load(pacman,dplyr,GGally, ggplot2, ggthemes, ggvis, httr, lubridate, p
 
 library(datasets)
 library(tidyquant)
+library(tseries)
+library(zoo)
 ```
 
 
@@ -153,7 +155,7 @@ Conditions to be satisfied to apply geometric random walk:
 ```{r}
 set.seed(101)
 sample_price <- tatasteel_price[1:750] 
-tatasteel_stationary <- MEAN_CORRELATION_VAR(sample_price,5,25)
+tatasteel_stationary <- MEAN_CORRELATION_VAR(sample_price,5,50)
 tatasteel_stationary <- na.omit(tatasteel_stationary)
 plot(ts(tatasteel_stationary[,1]))
 title(main = "MEAN_MOVEMENT")
@@ -170,7 +172,7 @@ Now checking if log return is stationary:
 ```{r}
 set.seed(101)
 mod_log_return <- log_return_tatasteel[1:750]
-return_analysis <- MEAN_CORRELATION_VAR(mod_log_return,5,25)
+return_analysis <- MEAN_CORRELATION_VAR(mod_log_return,5,50)
 plot(ts(return_analysis[,1]))
 abline(h=0,lwd=2,col='red')
 title(main = "MEAN_MOVEMENT")
@@ -194,7 +196,45 @@ library(tseries)
 adf.test(log(tatasteel_price))
 adf.test(log_return_tatasteel)
 ```
-Hence we can see that observations about both series is correct
+Hence we can see that observations about both series is correct.
+We also need to rule out the possibility of our log return series being noise
+
+```{r}
+Box.test(LOG_RETURN_NFLX,lag = 20,type = "Ljung")
+```
+We see that there is correlation between the data so we can apply geometric random motion for analysis
+
+Geometric Brownian Motion:
+
+$\hat{\mu} = {(\overline{r}+s^2/2)}/{\Delta t}$
+
+$\hat{\sigma} = s/{\Delta t}$
+
+
+```{r}
+n <- length(tatasteel_price)
+sim.size = 500
+rbar<-mean(log_return_tatasteel)
+s<-sd(log_return_tatasteel)
+delta_t<-1
+mu_hat<-rbar+s^2/2
+set.seed(321)
+## Simulate log-return from Normal distribution
+rt.sim<-rnorm(sim.size,mean=(mu_hat-s^2/2),sd=s)
+tatasteel.sim <-rep(NA,sim.size)
+tatasteel.sim[1] <- tatasteel_price[n]*exp(rt.sim[1])
+
+for(i in 2: sim.size) 
+  tatasteel.sim[i] <- tatasteel_price[i-1]*exp(rt.sim[i])
+
+yl<-min(tatasteel_price)*0.85
+yu<-max(tatasteel_price)*1.9
+plot(ts(tatasteel_price),xlim=c(0,(n+sim.size)),ylim=c(yl,yu))
+lines((n+1):(n+sim.size),tatasteel.sim,col="red",lwd=2)
+grid(col="black",lwd=2)
+
+```
+
 
 Unload all packages
 ```{r}
