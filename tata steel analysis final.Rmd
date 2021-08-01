@@ -227,7 +227,8 @@ tatasteel.sim <-rep(NA,sim.size)
 tatasteel.sim[1] <- tatasteel_price[n]*exp(rt.sim[1])
 
 for(i in 2: sim.size) 
-  tatasteel.sim[i] <- tatasteel_price[i-1]*exp(rt.sim[i])
+  tatasteel.sim[i] <- tatasteel.sim[i-1]*exp(rt.sim[i])
+
 
 yl<-min(tatasteel_price)*0.85
 yu<-max(tatasteel_price)*1.9
