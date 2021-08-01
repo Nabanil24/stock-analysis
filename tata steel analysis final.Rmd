@@ -204,7 +204,7 @@ We also need to rule out the possibility of our log return series being noise
 ```{r}
 Box.test(log_return_tatasteel,lag = 20,type = "Ljung")
 ```
-We see that there is correlation between the data so we can apply geometric random motion for analysis
+We see that there is correlation between the data so we can apply geometric random motion for prediction of future prices
 
 Geometric Brownian Motion:
 
@@ -215,7 +215,7 @@ $\hat{\sigma} = s/{\Delta t}$
 
 ```{r}
 n <- length(tatasteel_price)
-sim.size = 500
+sim.size = 220
 rbar<-mean(log_return_tatasteel)
 s<-sd(log_return_tatasteel)
 delta_t<-1
